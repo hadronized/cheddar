@@ -8,7 +8,7 @@ use std::str::from_utf8_unchecked;
 use glsl::parser::{external_declaration, identifier};
 pub use glsl::parser::{ParseError, ParseResult, parse, parse_str};
 
-use syntax;
+use lang;
 
 // Turn a &[u8] into a String.
 #[inline]
@@ -30,7 +30,7 @@ named!(module_sep_n_name,
 /// foo
 /// foo.bar
 /// foo.bar.zoo
-named!(pub module_path<&[u8], syntax::ModulePath>,
+named!(pub module_path<&[u8], lang::ModulePath>,
   do_parse!(
     // recognize at least one module name
     base: identifier >>
@@ -41,7 +41,7 @@ named!(pub module_path<&[u8], syntax::ModulePath>,
       let mut rest = rest.clone(); // FIXME: meh?
       rest.insert(0, base.as_bytes());
 
-      syntax::ModulePath {
+      lang::ModulePath {
         path: rest.into_iter().map(bytes_to_string).collect()
       }
     })
@@ -51,7 +51,7 @@ named!(pub module_path<&[u8], syntax::ModulePath>,
 /// Parse a symbol list.
 ///
 ///     ( item0, item1, item2, …)
-named!(pub symbol_list<&[u8], Vec<syntax::ModuleSymbol>>,
+named!(pub symbol_list<&[u8], Vec<lang::ModuleSymbol>>,
   ws!(
     delimited!(char!('('),
                separated_list!(char!(','), identifier),
@@ -61,21 +61,21 @@ named!(pub symbol_list<&[u8], Vec<syntax::ModuleSymbol>>,
 );
 
 /// Parse an import list.
-named!(pub import_list<&[u8], syntax::ImportList>,
+named!(pub import_list<&[u8], lang::ImportList>,
   ws!(do_parse!(
     tag!("use") >>
     from_module: module_path >>
     symbols: symbol_list >>
-    (syntax::ImportList { module: from_module, list: symbols })
+    (lang::ImportList { module: from_module, list: symbols })
   ))
 );
 
 /// Parse a module.
-named!(pub module<&[u8], syntax::Module>,
+named!(pub module<&[u8], lang::Module>,
   ws!(do_parse!(
     imports: many0!(import_list) >>
     glsl: many0!(external_declaration) >>
-    (syntax::Module { imports, glsl })
+    (lang::Module { imports, glsl })
   ))
 );
 
@@ -92,13 +92,13 @@ mod tests {
   
   #[test]
   fn parse_module_path_simple() {
-    assert_eq!(module_path(&b"foo"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into()] }));
-    assert_eq!(module_path(&b"  \n\tfoo \n"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into()] }));
+    assert_eq!(module_path(&b"foo"[..]), IResult::Done(&b""[..], lang::ModulePath { path: vec!["foo".into()] }));
+    assert_eq!(module_path(&b"  \n\tfoo \n"[..]), IResult::Done(&b""[..], lang::ModulePath { path: vec!["foo".into()] }));
   }
   
   #[test]
   fn parse_module_path_several() {
-    assert_eq!(module_path(&b"foo.bar.zoo"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into(), "bar".into(), "zoo".into()] }));
+    assert_eq!(module_path(&b"foo.bar.zoo"[..]), IResult::Done(&b""[..], lang::ModulePath { path: vec!["foo".into(), "bar".into(), "zoo".into()] }));
   }
   
   #[test]
@@ -117,8 +117,8 @@ mod tests {
   fn parse_import_list() {
     let foo = "foo".to_owned();
     let bar = "bar".to_owned();
-    let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
-    let expected = syntax::ImportList { module: zoo_woo, list: vec![foo, bar] };
+    let zoo_woo = lang::ModulePath { path: vec!["zoo".into(), "woo".into()] };
+    let expected = lang::ImportList { module: zoo_woo, list: vec![foo, bar] };
   
     assert_eq!(import_list(&b"use zoo.woo (foo, bar)"[..]), IResult::Done(&b""[..], expected.clone()));
     assert_eq!(import_list(&b" use    zoo.woo    (   foo  ,   bar  )"[..]), IResult::Done(&b""[..], expected.clone()));

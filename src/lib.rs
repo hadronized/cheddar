@@ -241,5 +241,5 @@ extern crate nom;
 extern crate warmy;
 
 pub mod error;
+pub mod lang;
 pub mod parser;
-pub mod syntax;
