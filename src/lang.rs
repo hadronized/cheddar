@@ -5,7 +5,7 @@
 //! This module also exports some useful functions to cope with the syntax types.
 
 pub use glsl::syntax::*;
-use glsl::writer;
+use glsl::transpiler;
 use std::error::Error;
 use std::fmt::{self, Write};
 use std::iter::once;
@@ -134,7 +134,7 @@ pub fn sink_single_as_ext_decls<'a, F, I>(sink: &mut F, s: I)
                                             F: Write {
   for sd in s {
     let ed = single_to_external_declaration(sd.clone());
-    writer::glsl::show_external_declaration(sink, &ed);
+    transpiler::glsl::show_external_declaration(sink, &ed);
   }
 }
 

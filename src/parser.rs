@@ -5,7 +5,7 @@
 use nom::alphanumeric;
 use std::str::from_utf8_unchecked;
 
-use glsl::parser::{external_declaration, identifier};
+use glsl::parsers::{external_declaration, identifier};
 pub use glsl::parser::{ParseError, ParseResult, parse, parse_str};
 
 use lang;
