@@ -12,6 +12,8 @@
 //!   - Structures, types and GLSL-specific constructs sharing.
 //!   - Imports and modules.
 //!
+//! The language is presented as an EDSL.
+//!
 //! # A functional shading language
 //!
 //! Cheddar uses – for most constructs – the same syntax as GLSL. If you’ve been writing GLSL for a
@@ -19,14 +21,14 @@
 //! being productive with it.
 //!
 //! The biggest change from GLSL is that Cheddar tries to be more functional. It’s still an
-//! imperative language; you can still create variable and mutably change their content. However,
+//! imperative language; you can still create variables and mutably change their content. However,
 //! you don’t write to globals anymore (i.e. vertex attributes) or you don’t *emit* vertices and
 //! primitives anymore.
 //!
 //! ## The core: the semantics functions
 //!
 //! *Semantics functions* are functions you can declare that have a name that makes them special.
-//! Every programmer knows at least one semantics function: `main`. If an *unit of code* exports a
+//! Every programmer knows at least one semantics function: `main`. If a *unit of code* exports a
 //! function named `main` taking no argument and returning nothing, this function will be treated as
 //! the *entry point* of your binary for example. Cheddar uses this concept by recognizing several
 //! semantics functions.
@@ -35,7 +37,7 @@
 //! > the `start` routine. This is not currently possible with Cheddar, though.
 //!
 //! Most of the semantics functions directly map to *shader stages*. With vanilla GLSL, if you want
-//! to write a *vertex shader*, you must provide a unit of code that provide a `main` function. That
+//! to write a *vertex shader*, you must provide a unit of code that exports a `main` function. That
 //! code will typically read *vertex attributes* via `in` declarations and will pass code to the
 //! next stage (typically a *fragment shader*, but it might be a *geometry shader* too, for
 //! instance).
@@ -69,7 +71,10 @@
 //!     - If you want to ignore an argument, you can just omit its name but keep its type (like you
 //!       would do in C for instance).
 //!   - The type in return position must have at least one field which type is `vec4` – its name is
-//!     free. This field represents the actual position of the computed output vertex.
+//!     currently restricted and you must call it `chdr_Position`. This field represents the actual
+//!     position of the computed output vertex and you won’t be able to read from it; you can only
+//!     write to it. If you need it after `map_vertex`, you need to add another field to your
+//!     struct. This limitation might be removed in a future release.
 //!
 //! Cheddar doesn’t care about the order in which the functions and types appear, it will
 //! re-organize them when compiling.
@@ -140,6 +145,7 @@
 //!   vec4 col;
 //!   vec3 normal;
 //! };
+//!
 //! void concat_map_prim(in V[3] verts, layout (triangle_strip, max_vertices = 3) out GV) {
 //!   // …
 //! }
@@ -148,7 +154,7 @@
 //! Then the next thing you want to know is how you’re supposed to “generate” vertices and
 //! primitives. This is done by a set of semantics functions:
 //!
-//!   - `yield_vertex`, which takes as single argument the type of input vertex (`V` in our case).
+//!   - `yield_vertex`, which takes as single argument a vertex correctly typed (`V` in our case).
 //!   - `yield_primitive`, which doesn’t take any argument.
 //!
 //! Both the function return nothing. The former will *yield* the vertex you pass as argument and
@@ -218,8 +224,17 @@
 //! > Disclaimer: currently, the *import list* is just a hint to the programmer and is not used by
 //! > the Cheddar runtime. Every symbols are imported. This will be fixed in a future release.
 //!
-//! Cheddar supports transitive dependency and knows how to resolve the *diamond problem* for
-//! imports. It will also correctly catch dependency 
+//! Cheddar supports transitive dependencies and knows how to resolve the *diamond problem* for
+//! imports. It will also correctly catch dependency cycles, if you come accross any.
+//!
+//! ### Note on `warmy`
+//!
+//! Cheddar uses the `warmy` crate to provide you with modules and a simple dependency solver.
+//! The current situation is that Cheddar will not lookup the dependency of your module if you don’t
+//! ask it to do so. See the [`Module::substitute_imports`] function for further information on how
+//! to do so.
+//!
+//! Because of using `warmy`, Cheddar also supports automatic live reloading the shading modules.
 //!
 //! # Note on validation
 //!
@@ -233,7 +248,7 @@
 //! The **semantics of your code is not analyzed**. That means that if you do something like
 //! `float x = true;`, Cheddar won’t complain.
 //!
-//! Development to fix this are on the go but contribution is highly welcomed.
+//! Development to fix this is on the go but contributions are highly welcomed!
 
 #![feature(box_syntax)]
 #![feature(box_patterns)]
