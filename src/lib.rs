@@ -249,6 +249,10 @@
 //! `float x = true;`, Cheddar won’t complain.
 //!
 //! Development to fix this is on the go but contributions are highly welcomed!
+//!
+//! # Note on tessellation control and evaluation shaders
+//!
+//! Those two stages are yet to be integrated into Cheddar.
 
 #![feature(box_syntax)]
 #![feature(box_patterns)]
