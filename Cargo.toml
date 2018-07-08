@@ -1,7 +1,21 @@
 [package]
 name = "cheddar"
 version = "0.1.0"
+license = "BSD-3-Clause"
 authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
+description = "Functional and practical GLSL superset EDSL"
+keywords = ["edsl", "glsl", "graphics", "shader"]
+categories = ["rendering"]
+homepage = "https://github.com/phaazon/cheddar"
+repository = "https://github.com/phaazon/cheddar"
+documentation = "https://docs.rs/cheddar"
+readme = "README.md"
+
+[badges]
+travis-ci = { repository = "phaazon/cheddar", branch = "master" }
+is-it-maintained-issue-resolution = { repository = "phaazon/cheddar" }
+is-it-maintained-open-issues = { repository = "phaazon/cheddar" }
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 glsl = "0.9"

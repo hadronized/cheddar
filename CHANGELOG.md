@@ -1,5 +1,5 @@
 # 0.1
 
-> Monday, June, 17th 2018
+> Sunday, July, 8th 2018
 
 - Initial revision.
