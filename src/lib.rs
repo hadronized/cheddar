@@ -243,8 +243,9 @@ extern crate glsl;
 extern crate nom;
 extern crate warmy;
 
-pub use glsl::syntax::*;
-pub use glsl::parser::{ParseError, ParseResult, parse, parse_str};
+use glsl::syntax::*;
+pub use glsl::parser::{ParseError, ParseResult};
+use glsl::parser;
 use glsl::parsers::{external_declaration, identifier};
 use glsl::transpiler;
 use nom::alphanumeric;
@@ -258,7 +259,18 @@ use std::path::PathBuf;
 use std::str::from_utf8_unchecked;
 use warmy::{FSKey, Load, Loaded, Res, Storage};
 
+/// GLSL AST.
 pub type GLSL = Vec<ExternalDeclaration>;
+
+/// Parse a Cheddar source from a bytes stream.
+pub fn parse<S>(source: S) -> ParseResult<Module> where S: AsRef<[u8]> {
+  parser::parse(source.as_ref(), module)
+}
+
+/// Parse a Cheddar source from a string.
+pub fn parse_str<S>(source: S) -> ParseResult<Module> where S: AsRef<str> {
+  parser::parse_str(source.as_ref(), module)
+}
 
 /// A module.
 ///
@@ -272,7 +284,7 @@ pub struct Module {
 }
 
 impl Module {
-  /// Shrink a module along with its imports to yield a bigger module with no imports. Return all
+  /// Shrink a module along with its imports to yield a bigger module with no import. Return all
   /// the visited modules (including the current one).
   ///
   /// This is needed whenever the module must be compiled to strings (i.e. [Module::to_glsl_setup]).
@@ -565,7 +577,7 @@ impl<C> Load<C> for Module {
     let mut src = String::new();
     let _ = fh.read_to_string(&mut src);
 
-    match parse_str(&src[..], module) {
+    match parser::parse_str(&src[..], module) {
       ParseResult::Ok(module) => {
         Ok(module.into())
       }
@@ -610,7 +622,10 @@ pub type ModuleName = String;
 /// A symbol, living in a module.
 pub type ModuleSymbol = String;
 
+/// Expected number of arguments type helper.
 pub type ExpectedNumberOfArgs = usize;
+
+/// Found number of arguments type helper.
 pub type FoundNumberOfArgs = usize;
 
 /// GLSL conversion error.
@@ -751,6 +766,7 @@ impl Error for DepsError {
   }
 }
 
+/// Error that might happen while loading a [`Module`].
 #[derive(Debug)]
 pub enum ModuleError {
   FileNotFound(PathBuf),
@@ -803,7 +819,7 @@ pub struct ModuleFold {
 }
 
 /// Sink single declarations as external declarations.
-pub fn sink_single_as_ext_decls<'a, F, I>(sink: &mut F, s: I)
+fn sink_single_as_ext_decls<'a, F, I>(sink: &mut F, s: I)
                                       where I: IntoIterator<Item = &'a SingleDeclaration>,
                                             F: Write {
   for sd in s {
@@ -813,7 +829,7 @@ pub fn sink_single_as_ext_decls<'a, F, I>(sink: &mut F, s: I)
 }
 
 /// Turn a `SingleDeclaration` into an `ExternalDeclaration`.
-pub fn single_to_external_declaration(sd: SingleDeclaration) -> ExternalDeclaration {
+fn single_to_external_declaration(sd: SingleDeclaration) -> ExternalDeclaration {
   ExternalDeclaration::Declaration(
     Declaration::InitDeclaratorList(
       InitDeclaratorList {
@@ -827,7 +843,7 @@ pub fn single_to_external_declaration(sd: SingleDeclaration) -> ExternalDeclarat
 /// Replace an output declaration by its input declaration dual.
 ///
 /// Useful when an input interface must match an output one.
-pub fn input_from_output(output: SingleDeclaration, has_array: bool) -> SingleDeclaration {
+fn input_from_output(output: SingleDeclaration, has_array: bool) -> SingleDeclaration {
   let
     qualifier = output.ty.qualifier.map(|q| {
       TypeQualifier {
@@ -853,14 +869,14 @@ pub fn input_from_output(output: SingleDeclaration, has_array: bool) -> SingleDe
 }
 
 /// Replace outputs by inputs.
-pub fn inputs_from_outputs(outputs: &[SingleDeclaration], has_array: bool) -> Vec<SingleDeclaration> {
+fn inputs_from_outputs(outputs: &[SingleDeclaration], has_array: bool) -> Vec<SingleDeclaration> {
   outputs.into_iter().map(|sd| input_from_output(sd.clone(), has_array)).collect()
 }
 
 /// Map a StructFieldSpecifier to an ExternalDeclaration.
 ///
 /// Typically suitable for generating an output from a struct field.
-pub fn field_to_single_decl(field: &StructFieldSpecifier, prefix: &str) -> SingleDeclaration {
+fn field_to_single_decl(field: &StructFieldSpecifier, prefix: &str) -> SingleDeclaration {
   let base_qualifier = TypeQualifierSpec::Storage(StorageQualifier::Out);
   let qualifier = match field.qualifier {
     Some(ref qual) =>
@@ -887,7 +903,7 @@ pub fn field_to_single_decl(field: &StructFieldSpecifier, prefix: &str) -> Singl
 /// Map a struct’s fields to a Vec<ExternalDeclaration>.
 ///
 /// Typically suitable for generating outputs from a struct fields.
-pub fn fields_to_single_decls(fields: &[StructFieldSpecifier], prefix: &str)
+fn fields_to_single_decls(fields: &[StructFieldSpecifier], prefix: &str)
                               -> Result<Vec<SingleDeclaration>, GLSLConversionError> {
   let mut outputs = Vec::new();
 
@@ -913,7 +929,7 @@ pub fn fields_to_single_decls(fields: &[StructFieldSpecifier], prefix: &str)
 }
 
 /// Filter out a function definition by removing its unused arguments.
-pub fn remove_unused_args_fn(f: &FunctionDefinition) -> FunctionDefinition {
+fn remove_unused_args_fn(f: &FunctionDefinition) -> FunctionDefinition {
   let f = f.clone();
 
   FunctionDefinition {
@@ -925,7 +941,7 @@ pub fn remove_unused_args_fn(f: &FunctionDefinition) -> FunctionDefinition {
   }
 }
 
-pub fn is_fn_arg_named(arg: &FunctionParameterDeclaration) -> bool {
+fn is_fn_arg_named(arg: &FunctionParameterDeclaration) -> bool {
   if let FunctionParameterDeclaration::Named(..) = *arg {
     true
   } else {
@@ -936,7 +952,7 @@ pub fn is_fn_arg_named(arg: &FunctionParameterDeclaration) -> bool {
 /// Extract the type name of a function argument. If the argument’s type is not a typename,
 /// nothing is returned.
 /// Get the fully specified type of a function’s argument.
-pub fn fn_arg_as_fully_spec_ty(arg: &FunctionParameterDeclaration) -> FullySpecifiedType {
+fn fn_arg_as_fully_spec_ty(arg: &FunctionParameterDeclaration) -> FullySpecifiedType {
   match *arg {
     FunctionParameterDeclaration::Named(ref qualifier, FunctionParameterDeclarator {
       ref ty,
@@ -956,7 +972,7 @@ pub fn fn_arg_as_fully_spec_ty(arg: &FunctionParameterDeclaration) -> FullySpeci
 
 /// Extract the type name of a fully specified type. If the type is not a typename, nothing is
 /// returned.
-pub fn get_ty_name_from_fully_spec_ty(fst: &FullySpecifiedType) -> Result<TypeName, GLSLConversionError> {
+fn get_ty_name_from_fully_spec_ty(fst: &FullySpecifiedType) -> Result<TypeName, GLSLConversionError> {
   if let TypeSpecifierNonArray::TypeName(ref n) = fst.ty.ty {
     Ok(n.clone())
   } else {
@@ -966,7 +982,7 @@ pub fn get_ty_name_from_fully_spec_ty(fst: &FullySpecifiedType) -> Result<TypeNa
 
 /// Get the type name of the argument of a unary function. If the argument is not unary, fail
 /// with the approriate error.
-pub fn get_fn1_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLConversionError> {
+fn get_fn1_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLConversionError> {
   let slice = f.prototype.parameters.as_slice();
   match slice {
     &[ref arg] => {
@@ -978,12 +994,12 @@ pub fn get_fn1_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLCon
 }
 
 /// Get the return type of a function by looking up its definition in the provided slice.
-pub fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, GLSLConversionError> {
+fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, GLSLConversionError> {
   struct_from_ty_spec(&f.prototype.ty.ty, structs)
 }
 
 /// Get the struct definition associated with a type specifier.
-pub fn struct_from_ty_spec(
+fn struct_from_ty_spec(
   ty_spec: &TypeSpecifier,
   structs: &[StructSpecifier]
 ) -> Result<StructSpecifier, GLSLConversionError> {
@@ -999,7 +1015,7 @@ pub fn struct_from_ty_spec(
 }
 
 /// Drop the first field of a struct.
-pub fn drop_1st_field(s: &StructSpecifier) -> StructSpecifier {
+fn drop_1st_field(s: &StructSpecifier) -> StructSpecifier {
   StructSpecifier {
     name: s.name.clone(),
     fields: s.fields.iter().skip(1).cloned().collect(),
@@ -1026,7 +1042,7 @@ named!(module_sep_n_name,
 /// foo
 /// foo.bar
 /// foo.bar.zoo
-named!(pub module_path<&[u8], ModulePath>,
+named!(module_path<&[u8], ModulePath>,
   do_parse!(
     // recognize at least one module name
     base: identifier >>
@@ -1047,7 +1063,7 @@ named!(pub module_path<&[u8], ModulePath>,
 /// Parse a symbol list.
 ///
 ///     ( item0, item1, item2, …)
-named!(pub symbol_list<&[u8], Vec<ModuleSymbol>>,
+named!(symbol_list<&[u8], Vec<ModuleSymbol>>,
   ws!(
     delimited!(char!('('),
                separated_list!(char!(','), identifier),
@@ -1057,7 +1073,7 @@ named!(pub symbol_list<&[u8], Vec<ModuleSymbol>>,
 );
 
 /// Parse an import list.
-named!(pub import_list<&[u8], ImportList>,
+named!(import_list<&[u8], ImportList>,
   ws!(do_parse!(
     tag!("use") >>
     from_module: module_path >>
@@ -1067,7 +1083,7 @@ named!(pub import_list<&[u8], ImportList>,
 );
 
 /// Parse a module.
-named!(pub module<&[u8], Module>,
+named!(module<&[u8], Module>,
   ws!(do_parse!(
     imports: many0!(import_list) >>
     glsl: many0!(external_declaration) >>
