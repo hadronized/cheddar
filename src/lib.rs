@@ -12,7 +12,7 @@
 //!   - Structures, types and GLSL-specific constructs sharing.
 //!   - Imports and modules.
 //!
-//! The language is presented as an EDSL.
+//! The language is presented as a DSL.
 //!
 //! # A functional shading language
 //!
@@ -1475,7 +1475,7 @@ fn check_gs_output_prim(s: &str) -> bool {
 }
 
 /// Fix the concat_map_prim function for geometry shaders. This function will remove all the
-/// GLSL that is normally illegal (only hints for us) and fix the EDSL one.
+/// GLSL that is normally illegal (only hints for us) and fix the DSL one.
 ///
 /// The first argument is a valid GLSL one – i.e. the input. The second one is used as hint
 /// only and must completely be removed.

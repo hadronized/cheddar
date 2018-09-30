@@ -1,9 +1,9 @@
 [package]
 name = "cheddar"
-version = "0.1.0"
+version = "0.2.0"
 license = "BSD-3-Clause"
 authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
-description = "Functional and practical GLSL superset EDSL"
+description = "Functional and practical GLSL superset DSL"
 keywords = ["edsl", "glsl", "graphics", "shader"]
 categories = ["rendering"]
 homepage = "https://github.com/phaazon/cheddar"
