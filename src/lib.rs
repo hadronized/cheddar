@@ -107,7 +107,7 @@
 //!
 //! Let’s write a fragment shader that will display our vertices by using *vertices’ colors*:
 //!
-//! ```
+//! ```ignore
 //! struct F {
 //!   vec4 col;
 //! };
@@ -269,8 +269,7 @@ use glsl::parsers::{external_declaration, identifier};
 use glsl::transpiler;
 use nom::alphanumeric;
 use std::collections::HashSet;
-use std::error::Error;
-use std::fmt::{self, Write};
+use std::fmt::{self, Debug, Display, Write};
 use std::fs::File;
 use std::io::Read;
 use std::iter::once;
@@ -688,7 +687,7 @@ pub enum GLSLConversionError {
   WrongGeometryOutputLayout(Option<TypeQualifier>)
 }
 
-impl fmt::Display for GLSLConversionError {
+impl Display for GLSLConversionError {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
       GLSLConversionError::NoVertexShader => {
@@ -750,8 +749,6 @@ impl fmt::Display for GLSLConversionError {
   }
 }
 
-impl Error for GLSLConversionError {}
-
 /// Errors that can happen in dependencies.
 #[derive(Debug)]
 pub enum DepsError {
@@ -759,10 +756,10 @@ pub enum DepsError {
   /// returned.
   Cycle(FSKey, FSKey),
   /// There was a loading error of a module.
-  LoadError(FSKey, Box<Error>),
+  LoadError(FSKey, Box<Debug>),
 }
 
-impl fmt::Display for DepsError {
+impl Display for DepsError {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
       DepsError::Cycle(ref a, ref b) => {
@@ -770,17 +767,8 @@ impl fmt::Display for DepsError {
       }
 
       DepsError::LoadError(ref path, ref e) => {
-        write!(f, "error in {}: {}", path.as_path().display(), e)
+        write!(f, "error in {}: {:?}", path.as_path().display(), e)
       }
-    }
-  }
-}
-
-impl Error for DepsError {
-  fn cause(&self) -> Option<&Error> {
-    match *self {
-      DepsError::LoadError(_, ref e) => Some(e.as_ref()),
-      _ => None
     }
   }
 }
@@ -794,7 +782,7 @@ pub enum ModuleError {
   DepsError(DepsError)
 }
 
-impl fmt::Display for ModuleError {
+impl Display for ModuleError {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
       ModuleError::FileNotFound(ref path) => {
@@ -812,16 +800,6 @@ impl fmt::Display for ModuleError {
       ModuleError::DepsError(ref e) => {
         write!(f, "dependency error: {}", e)
       }
-    }
-  }
-}
-
-impl Error for ModuleError {
-  fn cause(&self) -> Option<&Error> {
-    match *self {
-      ModuleError::ParseFailed(ref e) => Some(e),
-      ModuleError::DepsError(ref e) => Some(e),
-      _ => None
     }
   }
 }

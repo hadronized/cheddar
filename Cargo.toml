@@ -20,4 +20,4 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 glsl = "0.9"
 nom = "3.2"
-warmy = "0.7"
+warmy = "0.10"
